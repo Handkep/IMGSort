@@ -49,6 +49,7 @@ class ImageSorter:
         pass
     def sortByDevice():
         pass
+    
 
     def createPathByMonth(self, date):
         path = "sorted"
@@ -124,6 +125,17 @@ class ImageSorter:
         with Image.open(imageFilePath) as im:
             exifData = im._getexif()
             foundExifData = False
+# ============================================
+
+            exif = {
+                TAGS[k]: v
+                for k, v in im._getexif().items()
+                if k in TAGS
+            }
+            import pprint
+            pprint.pprint(exif)
+
+# ============================================
             for id in exifData:
                 data = exifData.get(id)
                 if id == 36867: #36867 -> DateTimeOriginal
