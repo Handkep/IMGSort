@@ -42,15 +42,21 @@ class ImageSorter:
         self.imageDirektory = destination
         self.datelessPath = datelessPath
         self.filenames = []
+        self.supportedFileTypes= ["video","image"]
+        self.countFilesLinked = 0
         self.searchForFilesInDirs()
-        self.sortByMonth()
-    # def run():
+        self.__sortByMonth()
+    def run(self, sortFunc):
+        
+        print("Total links created: "+self.countFilesLinked)
+        print("Runtime: ")
+    def sortByMonth():
+        pass
     def sortByYear():
         pass
     def sortByDevice():
         pass
     
-
     def createPathByMonth(self, date):
         path = "sorted"
         path = os.path.join(path, date.rsplit("-")[0])
@@ -70,6 +76,18 @@ class ImageSorter:
         }
         path = os.path.join(path, switch.get(int(date.rsplit("-")[1]),"0"))
         return path
+
+    def createSortedPathByMonth(self, filePath, date):
+        try:
+            src = os.path.abspath(filePath)
+            dest = os.path.join(self.createPathByMonth(date), os.path.split(filePath)[1])
+            self.make_dirs(self.createPathByMonth(date))
+            logger.info("img src: %s dest: %s "%(src,dest))
+            return dict({"src":src,"dest":dest})
+        except NoDateError:
+            logger.error("cant find exif date, linking files to dateless: {}".format(filePath))                      
+            src = os.path.abspath(filePath)
+            return dict({"src":src,"dest":self.datelessPath})
             
     def make_dirs(self,head):
         head_backup = head
@@ -82,7 +100,6 @@ class ImageSorter:
             except OSError as e:
                 logging.error(e)
                 return 0
-
         for i in range(len(_path)-1,-1,-1):
             # print(_path[i])
             try:
@@ -99,25 +116,19 @@ class ImageSorter:
         for root, dirs, files in os.walk(self.imageDirektory):
             for filename in files:
                 # logger.debug("root:%s dirs:%s file:%s"%(root, dirs, os.path.join(root, filename)))
-                self.filenames.append(os.path.join(root, filename))
+                print(magic.from_file(os.path.join(root, filename),mime=True).split("/")[0])
+                if magic.from_file(os.path.join(root, filename),mime=True).split("/")[0] in self.supportedFileTypes: 
+                    print("Asfgöljagöhaögahöhgoarghökasjnögargh")
+                    self.filenames.append(os.path.join(root, filename))
                 # f = os.path.join(root, filename)
                 # self.checkFile(f)
                 # checking if it is a file
         print(self.filenames)
 
-    def sortByMonth(self):
+    def __sortByMonth(self):
         for f in self.filenames:
-            filetype = magic.from_file(f,mime=True).split("/")[0]
             if os.path.isfile(f):
-                if filetype == "video":
-                    logger.info("processing Videofile: {}".format(os.path.relpath(f)))
-                    self.createLinkToPath(**self.createSortedPathByMonth(f,self.getFfmpegDate(f)))
-                    # logger.info(self.createSortedImagePath(f))
-                elif filetype == "image":
-                    logger.info("processing Imagefile: {}".format(os.path.relpath(f)))
-                    self.createLinkToPath(**self.createSortedPathByMonth(f,self.getExifDate(f)))
-                else:
-                    logger.error("{} is nor an imagefile or a videofile!".format(os.path.relpath(f)))
+                    self.createLinkToPath(**self.createSortedPathByMonth(f,self.getMediaFileDate(f)))
             else:
                 logger.error("{} is nor an imagefile or a videofile!".format(os.path.relpath(f)))
 
@@ -156,21 +167,23 @@ class ImageSorter:
             logger.error(e)
             raise NoDateError
 
-    def createSortedPathByMonth(self, filePath, date):
-        try:
-            src = os.path.abspath(filePath)
-            dest = os.path.join(self.createPathByMonth(date), os.path.split(filePath)[1])
-            self.make_dirs(self.createPathByMonth(date))
-            logger.info("img src: %s dest: %s "%(src,dest))
-            return dict({"src":src,"dest":dest})
-        except NoDateError:
-            logger.error("cant find exif date, linking files to dateless: {}".format(filePath))                      
-            src = os.path.abspath(filePath)
-            return dict({"src":src,"dest":self.datelessPath})
+    def getMediaFileDate(self, mediaFilePath):
+        filetype = magic.from_file(mediaFilePath,mime=True).split("/")[0]
+        if filetype == "video":
+            logger.info("processing Videofile: {}".format(os.path.relpath(mediaFilePath)))
+            return self.getFfmpegDate(mediaFilePath)
+            # logger.info(self.createSortedImagePath(mediaFilePath))
+        elif filetype == "image":
+            logger.info("processing Imagefile: {}".format(os.path.relpath(mediaFilePath)))
+            return self.getExifDate(mediaFilePath)
+        else:
+            logger.error("{} is nor an imagefile or a videofile!".format(os.path.relpath(mediaFilePath)))
+
 
     def createLinkToPath(self, src, dest):
         try:
             os.symlink(src, dest)
+            self.countFilesLinked+=1
         except Exception as e:
             logger.error(e) 
 
