@@ -179,7 +179,6 @@ class ImageSorter:
         else:
             logger.error("{} is nor an imagefile or a videofile!".format(os.path.relpath(mediaFilePath)))
 
-
     def createLinkToPath(self, src, dest):
         try:
             os.symlink(src, dest)
