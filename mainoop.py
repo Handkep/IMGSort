@@ -26,7 +26,8 @@ ch.setLevel(logging.DEBUG)
 
 # create formatter
 # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+# formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter('[%(asctime)s]:%(levelname)s - %(message)s')
 
 # add formatter to ch
 ch.setFormatter(formatter)
@@ -45,12 +46,13 @@ class ImageSorter:
         self.supportedFileTypes= ["video","image"]
         self.countFilesLinked = 0
         self.searchForFilesInDirs()
-        self.__sortByMonth()
+        # self.__sortByMonth()
     def run(self, sortFunc):
-        
-        print("Total links created: "+self.countFilesLinked)
-        print("Runtime: ")
-    def sortByMonth():
+        sortFunc()
+        print("Total links created: "+str(self.countFilesLinked))
+        print("Runtime: " +str(time.time() - startTime) + "s")
+    def sortByMonth(self):
+        self.run(self.__sortByMonth)
         pass
     def sortByYear():
         pass
@@ -116,9 +118,9 @@ class ImageSorter:
         for root, dirs, files in os.walk(self.imageDirektory):
             for filename in files:
                 # logger.debug("root:%s dirs:%s file:%s"%(root, dirs, os.path.join(root, filename)))
-                print(magic.from_file(os.path.join(root, filename),mime=True).split("/")[0])
+                # print(magic.from_file(os.path.join(root, filename),mime=True).split("/")[0])
                 if magic.from_file(os.path.join(root, filename),mime=True).split("/")[0] in self.supportedFileTypes: 
-                    print("Asfgöljagöhaögahöhgoarghökasjnögargh")
+                    # print("Asfgöljagöhaögahöhgoarghökasjnögargh")
                     self.filenames.append(os.path.join(root, filename))
                 # f = os.path.join(root, filename)
                 # self.checkFile(f)
@@ -138,17 +140,19 @@ class ImageSorter:
             foundExifData = False
 # ============================================
 
-            exif = {
-                TAGS[k]: v
-                for k, v in im._getexif().items()
-                if k in TAGS
-            }
-            import pprint
-            pprint.pprint(exif)
+            # exif = {
+            #     TAGS[k]: v
+            #     for k, v in im._getexif().items()
+            #     if k in TAGS
+            # }
+            # import pprint
+            # pprint.pprint(exif)
 
 # ============================================
             for id in exifData:
                 data = exifData.get(id)
+                if id == 272: #36867 -> DateTimeOriginal
+                    print(data)
                 if id == 36867: #36867 -> DateTimeOriginal
                     foundExifData = True
                     return str(datetime.strptime(data,"%Y:%m:%d %H:%M:%S").year) + "-" + str(datetime.strptime(data,"%Y:%m:%d %H:%M:%S").month)
@@ -156,11 +160,28 @@ class ImageSorter:
                 logger.error("cant find exif date, linking files to dateless: {}".format(imageFilePath))  
                 raise NoDateError
 
+
+    def getExifModel(self, imageFilePath):
+        with Image.open(imageFilePath) as im:
+            exifData = im._getexif()
+            foundExifData = False
+            for id in exifData:
+                data = exifData.get(id)
+                if id == 272: #36867 -> DateTimeOriginal
+                    return data
+            if not foundExifData:
+                logger.error("cant find exif date, linking files to dateless: {}".format(imageFilePath))  
+                raise NoDateError
+
+
+
     def getFfmpegDate(self, videoFilePath):
         videoFilePath = os.path.abspath(videoFilePath)
         if not os.path.exists(videoFilePath): raise FileNotFoundError
         # logger.info(videoFilePath)
         try:
+            import pprint
+            pprint.pprint(ffmpeg.probe(videoFilePath))
             tempDate = datetime.strptime(ffmpeg.probe(videoFilePath)["format"]["tags"]["creation_time"],"%Y-%m-%dT%H:%M:%S.000000Z")
             return "{}-{}".format(tempDate.year, tempDate.month) 
         except Exception as e:
@@ -187,3 +208,4 @@ class ImageSorter:
             logger.error(e) 
 
 sorter = ImageSorter()
+sorter.sortByMonth()
